@@ -1,0 +1,27 @@
+{
+  "name": "arye-configurator",
+  "version": "0.0.1",
+  "private": true,
+  "description": "ARYE Configurator - Desktop configuration app for ARYE gaming devices",
+  "scripts": {
+    "release": "./scripts/release.sh",
+    "changelog": "./scripts/update-changelog.sh",
+    "build": "cd scripts && ./build.sh",
+    "test": "echo \"No tests configured\" && exit 0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dvakatsiienko/arye-configurator.git"
+  },
+  "keywords": [
+    "configurator",
+    "gaming-peripherals",
+    "arye",
+    "rcc-1",
+    "device-configuration",
+    "desktop-app"
+  ],
+  "author": "ARYE EQUIPMENT LTD",
+  "license": "UNLICENSED",
+  "homepage": "https://arye.hk/"
+}

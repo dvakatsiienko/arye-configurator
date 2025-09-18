@@ -1,0 +1,71 @@
+# Build outputs
+dist/
+build/
+out/
+*.dll
+*.sys
+*.pdb
+
+# Exclude exe files except installer files in installers
+*.exe
+!installers/arye-configurator-*.exe
+
+# Installer artifacts (use GitHub Releases for distribution)
+installers/**/*.zip
+installers/**/*.msi
+
+# Releases (use GitHub Releases instead)
+releases/*.zip
+releases/*.msi
+releases/*.exe
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Dependencies
+node_modules/
+packages/
+
+# Environment and config
+.env
+.env.local
+*.config.local
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+
+# Temporary files
+temp/
+tmp/
+*.tmp
+*.temp
+
+# Certificates and keys (NEVER commit these)
+*.pfx
+*.p12
+*.key
+*.pem
+*.crt
+*.cer
+
+# Test outputs
+test-results/
+coverage/
+
+# Windows specific
+desktop.ini
+$RECYCLE.BIN/
+
+# Driver build artifacts
+*.obj
+*.lib
+*.exp
+*.ilk

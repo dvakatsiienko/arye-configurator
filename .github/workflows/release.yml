@@ -1,0 +1,106 @@
+name: Release Installer Package
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release"
+        required: true
+        default: "v1.0.0"
+
+permissions:
+  contents: write # Required for creating releases
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch all history for changelog generation
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup build environment
+        run: |
+          echo "Setting up Windows build environment"
+          # Add any required setup steps here
+
+      - name: Build installer package
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: |
+          cd scripts
+          ./build.sh
+        shell: bash
+
+      - name: Generate checksum
+        id: checksum
+        run: |
+          SHA256=$(sha256sum releases/arye-configurator-windows-${{ github.ref_name }}.zip | cut -d' ' -f1)
+          echo "SHA256=$SHA256" >> $GITHUB_OUTPUT
+          echo "Checksum: $SHA256"
+        shell: bash
+
+
+      - name: Create Release with Assets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Find the installer file to get actual filename
+          cd installers
+          DRIVER_FILE=$(ls arye-configurator-*.exe | head -1)
+
+          if [ -z "$DRIVER_FILE" ]; then
+            echo "ERROR: No installer file found!"
+            exit 1
+          fi
+
+          echo "Found installer file: $DRIVER_FILE"
+          cd ..
+
+          # Generate release notes with actual commit list
+          echo "### ARYE Configurator Desktop App" > release_notes.md
+          echo "" >> release_notes.md
+          echo "**Installer file:** \`$DRIVER_FILE\`" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "### Installation" >> release_notes.md
+          echo "1. [Download Windows installer](https://github.com/dvakatsiienko/arye-configurator/releases/download/${{ github.ref_name }}/arye-configurator-windows-${{ github.ref_name }}.zip) (this version)" >> release_notes.md
+          echo "2. [Permanent latest link](https://github.com/dvakatsiienko/arye-configurator/releases/latest/download/arye-configurator-windows-latest.zip) (always newest)" >> release_notes.md
+          echo "3. Extract and run **$DRIVER_FILE** as Administrator" >> release_notes.md
+          echo "4. Restart your computer" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "### What's Changed" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "**[Full changelog](https://github.com/dvakatsiienko/arye-configurator/blob/main/CHANGELOG.md)**" >> release_notes.md
+          echo "" >> release_notes.md
+
+          # Get previous tag to show commits since last release
+          CURRENT_TAG="${{ github.ref_name }}"
+          PREV_TAG=$(git tag -l --sort=-version:refname | grep -A1 "^$CURRENT_TAG$" | tail -1)
+
+          if [[ -n "$PREV_TAG" && "$PREV_TAG" != "$CURRENT_TAG" ]]; then
+            echo "**Changes since $PREV_TAG:**" >> release_notes.md
+            echo "" >> release_notes.md
+            git log --oneline --no-merges --perl-regexp --author="^(?!.*github-actions)" --grep="^🚀 release:|^📜 docs: update changelog" --invert-grep $PREV_TAG..$CURRENT_TAG | sed 's/^\([a-f0-9]\{7\}\)[a-f0-9]* \(.*\)/- [\1](https:\/\/github.com\/dvakatsiienko\/arye-configurator\/commit\/\1): \2/' >> release_notes.md
+          else
+            echo "**Recent commits:**" >> release_notes.md
+            echo "" >> release_notes.md
+            git log --oneline --no-merges --perl-regexp --author="^(?!.*github-actions)" --grep="^🚀 release:|^📜 docs: update changelog" --invert-grep -5 | sed 's/^\([a-f0-9]\{7\}\)[a-f0-9]* \(.*\)/- [\1](https:\/\/github.com\/dvakatsiienko\/arye-configurator\/commit\/\1): \2/' >> release_notes.md
+          fi
+
+          gh release create ${{ github.ref_name }} \
+            --title "ARYE Configurator ${{ github.ref_name }}" \
+            --notes-file release_notes.md \
+            ./releases/arye-configurator-windows-${{ github.ref_name }}.zip \
+            ./releases/arye-configurator-windows-latest.zip
+
+          rm release_notes.md
+        shell: bash
+

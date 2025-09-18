@@ -1,0 +1,108 @@
+name: Validate Pull Request
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+
+jobs:
+  validate:
+    name: Validate Changes
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Validate directory structure
+      run: |
+        Write-Host "Checking required directories..."
+        $requiredDirs = @(
+          ".github/workflows",
+          "drivers/windows",
+          "docs",
+          "scripts",
+          "releases"
+        )
+
+        foreach ($dir in $requiredDirs) {
+          if (-not (Test-Path $dir)) {
+            Write-Error "Required directory missing: $dir"
+            exit 1
+          }
+        }
+        Write-Host "Directory structure: OK"
+      shell: powershell
+
+    - name: Validate required files
+      run: |
+        Write-Host "Checking required files..."
+        $requiredFiles = @(
+          "README.md",
+          "CLAUDE.md",
+          ".github/workflows/release.yml",
+          "scripts/build.bat",
+          "scripts/validate.bat"
+        )
+
+        foreach ($file in $requiredFiles) {
+          if (-not (Test-Path $file)) {
+            Write-Error "Required file missing: $file"
+            exit 1
+          }
+        }
+        Write-Host "Required files: OK"
+      shell: powershell
+
+    - name: Check driver files
+      run: |
+        Write-Host "Validating driver directory..."
+        $driverPath = "drivers/windows"
+
+        if ((Get-ChildItem $driverPath -File | Measure-Object).Count -eq 0) {
+          Write-Warning "No driver files found in $driverPath"
+        } else {
+          Write-Host "Driver files present"
+        }
+      shell: powershell
+
+    - name: Validate changelog entry
+      run: |
+        Write-Host "Checking for changelog updates..."
+        $changelog = Get-Content "docs/changelog.md" -Raw
+
+        if ($changelog -match "\[Unreleased\]") {
+          Write-Host "Changelog has unreleased section"
+        } else {
+          Write-Warning "Consider updating changelog for this PR"
+        }
+      shell: powershell
+
+    - name: Security scan
+      run: |
+        Write-Host "Running basic security checks..."
+
+        # Check for sensitive information
+        $patterns = @("password=", "api_key=", "secret=", "token=")
+        $files = Get-ChildItem -Recurse -File -Include *.bat,*.ps1,*.yml,*.json |
+                 Where-Object { $_.FullName -notmatch "node_modules|\.git" }
+
+        foreach ($file in $files) {
+          $content = Get-Content $file.FullName -Raw
+          foreach ($pattern in $patterns) {
+            if ($content -match $pattern) {
+              Write-Warning "Potential sensitive data in $($file.Name)"
+            }
+          }
+        }
+
+        Write-Host "Security scan complete"
+      shell: powershell
+
+    - name: Run validation script
+      run: |
+        cd scripts
+        .\validate.bat
+      shell: cmd
